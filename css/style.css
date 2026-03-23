@@ -566,6 +566,52 @@ legend {
     line-height: var(--line-height-tight);
 }
 
+.gift-option--disabled label {
+    background: #111;
+    color: #fff;
+    border: 2px solid #111;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.95;
+}
+
+.gift-option--disabled label:hover {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+    box-shadow: none;
+    transform: none;
+}
+
+.gift-option--disabled input[type="checkbox"] {
+    pointer-events: none;
+}
+
+.gift-option--disabled .icon {
+    opacity: 0.85;
+}
+
+.gift-option--disabled span:not(.icon) {
+    color: #fff;
+}
+
+.gift-status {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+
+.loading-message {
+    color: var(--text-light);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: 1rem;
+    font-style: italic;
+}
+
 /* ========================================
    MENSAGENS DE ERRO
    ======================================== */

@@ -2,7 +2,7 @@
    CHÁ DE PANELA - JAVASCRIPT
    ======================================== */
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcZmtZLuOTr2mB2z6S6Rqdg2oKUP89ETc3vMrHudrb7nI8688Y6DzQ6wQNOw1hifdk/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlYi5zzJJSFkd1M_YPw9owQBnvQXisF3XxEPjrUrvlw5szHiS3UOhTEy60yC6D9KU_/exec';
 
 const PRESENTES_FALLBACK = [
     'Jogo de Pratos',
@@ -26,6 +26,8 @@ let allPresentesByCategory = {
     banheiro: [],
     lavanderia: []
 };
+
+let presentesBloqueados = [];
 let currentCategory = 'cozinha';
 
 const ITEMS_PER_PAGE = 10;
@@ -42,6 +44,7 @@ const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
 const paginationInfo = document.getElementById('paginationInfo');
 const presentesNoDisponiveis = document.getElementById('presentesNoDisponiveis');
+const loadingPresentes = document.getElementById('loadingPresentes');
 const submitBtn = document.getElementById('submitBtn');
 const successMessage = document.getElementById('successMessage');
 const errorMessage = document.getElementById('errorMessage');
@@ -49,6 +52,10 @@ const errorText = document.getElementById('errorText');
 
 function getPresentesCheckboxes() {
     return document.querySelectorAll('input[name="presentes"]');
+}
+
+function normalizePresentName(nome) {
+    return nome.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function validarNome(nome) {
@@ -122,7 +129,24 @@ function coletarDados() {
         dataHora: new Date().toLocaleString('pt-BR')
     };
 }
+async function carregarPresentesBloqueados() {
+    try {
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
+        const data = await response.json();
 
+        if (data.status === 'sucesso' && Array.isArray(data.presentesBloqueados)) {
+            presentesBloqueados = data.presentesBloqueados
+                .map(item => normalizePresentName(item))
+                .filter(item => item);
+            console.log('presentesBloqueados (normalizado):', presentesBloqueados);
+        } else {
+            presentesBloqueados = [];
+        }
+    } catch (error) {
+        console.error('Erro ao carregar presentes bloqueados:', error);
+        presentesBloqueados = [];
+    }
+}
 function marcarPresentesRemovidos(selecionados) {
     const guardados = JSON.parse(localStorage.getItem(REMOVED_GIFTS_STORAGE_KEY) || '[]');
     const unicos = Array.from(new Set([...guardados, ...selecionados]));
@@ -144,17 +168,26 @@ function inserirOpcoesPresentes(presentes) {
     presentesNoDisponiveis.style.display = 'none';
 
     presentes.forEach(presente => {
-        const id = 'gift-' + presente.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const id = 'gift-' + normalizePresentName(presente).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const bloqueado = presentesBloqueados.includes(normalizePresentName(presente));
+
         const div = document.createElement('div');
-        div.className = 'gift-option';
+        div.className = `gift-option ${bloqueado ? 'gift-option--disabled' : ''}`;
 
         const icon = getIconForPresent(presente);
 
         div.innerHTML = `
-            <input type="checkbox" id="${id}" name="presentes" value="${presente}">
+            <input
+                type="checkbox"
+                id="${id}"
+                name="presentes"
+                value="${presente}"
+                ${bloqueado ? 'disabled' : ''}
+            >
             <label for="${id}">
                 <span class="icon">${icon}</span>
                 <span>${presente}</span>
+                ${bloqueado ? '<small class="gift-status">Indisponível</small>' : ''}
             </label>
         `;
 
@@ -219,6 +252,10 @@ function atualizarPresentesDisponiveis() {
 }
 
 function carregarPresentes() {
+    console.log('Iniciando carregamento de presentes...');
+    loadingPresentes.style.display = 'block';
+    presentesNoDisponiveis.style.display = 'none';
+
     const carregamentos = Object.entries(CATEGORIES).map(([categoria, arquivo]) => {
         return fetch(arquivo)
             .then(response => {
@@ -239,14 +276,22 @@ function carregarPresentes() {
 
     Promise.all(carregamentos)
         .then(() => {
-            currentPage = 1;
-            atualizarCategoriaBotoes();
-            atualizarPresentesDisponiveis();
+            console.log('Carregamento concluído, esperando 2s para esconder loading...');
+            setTimeout(() => {
+                loadingPresentes.style.display = 'none';
+                currentPage = 1;
+                atualizarCategoriaBotoes();
+                atualizarPresentesDisponiveis();
+            }, 2000); // Delay de 2 segundos para teste
         })
         .catch(() => {
-            currentPage = 1;
-            atualizarCategoriaBotoes();
-            atualizarPresentesDisponiveis();
+            console.log('Erro no carregamento, esperando 2s para esconder loading...');
+            setTimeout(() => {
+                loadingPresentes.style.display = 'none';
+                currentPage = 1;
+                atualizarCategoriaBotoes();
+                atualizarPresentesDisponiveis();
+            }, 2000); // Delay de 2 segundos para teste
         });
 }
 
@@ -331,39 +376,36 @@ function exibirErro(mensagem) {
     errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function enviarDados(dados) {
+async function enviarDados(dados) {
     desabilitarBotao();
 
-    fetch(GOOGLE_APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados)
-    })
-    .then(response => {
-        // Com mode: 'no-cors', não conseguimos checar status
-        // Então consideramos sucesso após 2 segundos
-        setTimeout(() => {
-            const selecionados = Array.from(getPresentesCheckboxes())
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
+    try {
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(dados)
+        });
 
-            if (selecionados.length > 0) {
-                marcarPresentesRemovidos(selecionados);
-                atualizarPresentesDisponiveis();
-            }
+        const resultado = await response.json();
 
-            exibirSucesso();
+        if (resultado.status !== 'sucesso') {
+            exibirErro(resultado.mensagem || 'Não foi possível salvar os dados.');
             habilitarBotao();
-        }, 1000);
-    })
-    .catch(error => {
+            return;
+        }
+
+        await carregarPresentesBloqueados();
+        atualizarPresentesDisponiveis();
+        exibirSucesso();
+        habilitarBotao();
+
+    } catch (error) {
         console.error('Erro ao enviar:', error);
         exibirErro('Erro ao enviar dados. Verifique sua conexão e tente novamente.');
         habilitarBotao();
-    });
+    }
 }
 
 nomeInput.addEventListener('blur', () => {
@@ -418,16 +460,17 @@ form.addEventListener('submit', (event) => {
     enviarDados(dados);
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     if (GOOGLE_APPS_SCRIPT_URL.includes('SEU_ID_AQUI')) {
         console.warn('⚠️ AVISO: URL do Google Apps Script não foi configurada!');
         console.warn('Veja o arquivo README.md para instruções.');
     }
 
+    console.log('DOMContentLoaded, loadingPresentes:', loadingPresentes);
     nomeInput.focus();
-
     inicializarFiltrosCategoria();
 
+    await carregarPresentesBloqueados();
     carregarPresentes();
 });
 
