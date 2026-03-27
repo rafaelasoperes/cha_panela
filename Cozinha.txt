@@ -22,6 +22,7 @@ Colher de suco
 Copo medidor
 Cortador de pizza
 Cumbucas / Tigelas
+Concha de feijão
 Cuscuzeira
 Descanso de panela
 Descascador
@@ -53,6 +54,7 @@ Garrafa térmica
 Jarra de suco (Vidro)
 Jogo americano redondo
 Jogo de copos (Vidro)
+Jogo de copos (Vidro)
 Jogo de jantar
 Jogo de pratos de sobremesa
 Jogo de taças para suco / água
@@ -70,10 +72,11 @@ Molheira
 Organizador de geladeira
 Panela de pressão
 Pano de pia
-Pano de prato
-Pano de prato
-Pano de prato
-Pegador
+Pano de prato atoalhado
+Pano de prato atoalhado
+Pano de prato atoalhado
+Pano de prato atoalhado
+Pegador de salada
 Peneira
 Pipoqueira
 Porta alho
@@ -97,7 +100,6 @@ Ramekins
 Rodo de pia
 Rolo de massa
 Saladeira
-Saleiro
 Saleiro de mesa
 Seca salada
 Suporte coador
@@ -111,3 +113,6 @@ Travessa de vidro
 Triturador de alho
 Utensílios de silicone
 Utensílios para queijo
+Teste
+Teste
+Teste

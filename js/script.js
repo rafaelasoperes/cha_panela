@@ -2,7 +2,7 @@
    CHÁ DE PANELA - JAVASCRIPT
    ======================================== */
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlYi5zzJJSFkd1M_YPw9owQBnvQXisF3XxEPjrUrvlw5szHiS3UOhTEy60yC6D9KU_/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0SmbqEpCwfxhQsn4CQgL8zNC20UL_ghrw35vBqNFQJCqPN9vQSrw6arnIYijbqQ1P/exec';
 
 const PRESENTES_FALLBACK = [
     'Jogo de Pratos',
@@ -21,16 +21,19 @@ const CATEGORIES = {
     banheiro: 'Banheiro.txt',
     lavanderia: 'Lavanderia.txt'
 };
+
 let allPresentesByCategory = {
     cozinha: [],
     banheiro: [],
     lavanderia: []
 };
 
-let presentesBloqueados = [];
+// agora guarda a quantidade já escolhida por nome
+let presentesEscolhidosContagem = {};
+
 let currentCategory = 'cozinha';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 12;
 let currentPage = 1;
 let totalPages = 1;
 
@@ -117,36 +120,43 @@ function validarFormulario() {
 }
 
 function coletarDados() {
-    const presentesSelecionados = Array.from(
-        getPresentesCheckboxes()
-    ).filter(cb => cb.checked)
-     .map(checkbox => checkbox.value);
+    const presentesSelecionados = Array.from(getPresentesCheckboxes())
+        .filter(cb => cb.checked)
+        .map(checkbox => checkbox.value);
 
     return {
         nome: nomeInput.value.trim(),
-        telefone: telefoneInput.value.trim(),
-        presentes: presentesSelecionados.join('; '), // Separado por ponto e vírgula
+        telefone: nomeInput ? telefoneInput.value.trim() : '',
+        presentes: presentesSelecionados.join('; '),
         dataHora: new Date().toLocaleString('pt-BR')
     };
 }
+
 async function carregarPresentesBloqueados() {
     try {
         const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
         const data = await response.json();
 
-        if (data.status === 'sucesso' && Array.isArray(data.presentesBloqueados)) {
-            presentesBloqueados = data.presentesBloqueados
-                .map(item => normalizePresentName(item))
-                .filter(item => item);
-            console.log('presentesBloqueados (normalizado):', presentesBloqueados);
+        if (data.status === 'sucesso' && data.presentesEscolhidos && typeof data.presentesEscolhidos === 'object') {
+            presentesEscolhidosContagem = {};
+
+            Object.entries(data.presentesEscolhidos).forEach(([nome, qtd]) => {
+                const normalizado = normalizePresentName(nome);
+                if (normalizado) {
+                    presentesEscolhidosContagem[normalizado] = Number(qtd) || 0;
+                }
+            });
+
+            console.log('presentesEscolhidosContagem:', presentesEscolhidosContagem);
         } else {
-            presentesBloqueados = [];
+            presentesEscolhidosContagem = {};
         }
     } catch (error) {
         console.error('Erro ao carregar presentes bloqueados:', error);
-        presentesBloqueados = [];
+        presentesEscolhidosContagem = {};
     }
 }
+
 function marcarPresentesRemovidos(selecionados) {
     const guardados = JSON.parse(localStorage.getItem(REMOVED_GIFTS_STORAGE_KEY) || '[]');
     const unicos = Array.from(new Set([...guardados, ...selecionados]));
@@ -167,9 +177,28 @@ function inserirOpcoesPresentes(presentes) {
 
     presentesNoDisponiveis.style.display = 'none';
 
+    const presentesCategoria = allPresentesByCategory[currentCategory] || [];
+
+    const inicioPagina = (currentPage - 1) * ITEMS_PER_PAGE;
+    const anteriores = presentesCategoria.slice(0, inicioPagina);
+
+    const contagemAnteriores = {};
+    anteriores.forEach(presente => {
+        const normalizado = normalizePresentName(presente);
+        contagemAnteriores[normalizado] = (contagemAnteriores[normalizado] || 0) + 1;
+    });
+
+    const renderizados = { ...contagemAnteriores };
+
     presentes.forEach(presente => {
-        const id = 'gift-' + normalizePresentName(presente).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const bloqueado = presentesBloqueados.includes(normalizePresentName(presente));
+        const normalizado = normalizePresentName(presente);
+
+        renderizados[normalizado] = (renderizados[normalizado] || 0) + 1;
+
+        const quantidadeEscolhida = presentesEscolhidosContagem[normalizado] || 0;
+        const bloqueado = renderizados[normalizado] <= quantidadeEscolhida;
+
+        const id = 'gift-' + normalizado.replace(/[^a-z0-9]+/g, '-') + '-' + renderizados[normalizado];
 
         const div = document.createElement('div');
         div.className = `gift-option ${bloqueado ? 'gift-option--disabled' : ''}`;
@@ -225,24 +254,19 @@ function atualizarPaginacao(totalItems) {
     totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     currentPage = Math.min(currentPage, totalPages);
 
-    const texto = `Página ${currentPage} de ${totalPages}`;
-    paginationInfo.textContent = texto;
-
+    paginationInfo.textContent = `Página ${currentPage} de ${totalPages}`;
     prevPageBtn.disabled = currentPage === 1;
     nextPageBtn.disabled = currentPage === totalPages;
 
-    if (totalItems > ITEMS_PER_PAGE) {
-        paginationControls.style.display = 'flex';
-    } else {
-        paginationControls.style.display = 'none';
-    }
+    paginationControls.style.display = totalItems > ITEMS_PER_PAGE ? 'flex' : 'none';
 }
 
 function atualizarPresentesDisponiveis() {
-    const removidos = obterPresentesRemovidos();
+    const removidos = obterPresentesRemovidos().map(normalizePresentName);
     const presentesCategoria = allPresentesByCategory[currentCategory] || [];
-    const disponiveis = presentesCategoria.filter(p => !removidos.includes(p));
-    
+
+    const disponiveis = presentesCategoria.filter(p => !removidos.includes(normalizePresentName(p)));
+
     totalPages = Math.max(1, Math.ceil(disponiveis.length / ITEMS_PER_PAGE));
     currentPage = Math.min(currentPage, totalPages);
 
@@ -276,22 +300,20 @@ function carregarPresentes() {
 
     Promise.all(carregamentos)
         .then(() => {
-            console.log('Carregamento concluído, esperando 2s para esconder loading...');
             setTimeout(() => {
                 loadingPresentes.style.display = 'none';
                 currentPage = 1;
                 atualizarCategoriaBotoes();
                 atualizarPresentesDisponiveis();
-            }, 2000); // Delay de 2 segundos para teste
+            }, 2000);
         })
         .catch(() => {
-            console.log('Erro no carregamento, esperando 2s para esconder loading...');
             setTimeout(() => {
                 loadingPresentes.style.display = 'none';
                 currentPage = 1;
                 atualizarCategoriaBotoes();
                 atualizarPresentesDisponiveis();
-            }, 2000); // Delay de 2 segundos para teste
+            }, 2000);
         });
 }
 
@@ -327,7 +349,6 @@ function inicializarFiltrosCategoria() {
 
         const categoria = botao.dataset.category;
         if (!categoria || !CATEGORIES[categoria]) return;
-
         if (currentCategory === categoria) return;
 
         currentCategory = categoria;
@@ -335,10 +356,6 @@ function inicializarFiltrosCategoria() {
         atualizarCategoriaBotoes();
         atualizarPresentesDisponiveis();
     });
-}
-
-function getPresentesCheckboxes() {
-    return document.querySelectorAll('input[name="presentes"]');
 }
 
 function desabilitarBotao() {
@@ -356,11 +373,8 @@ function habilitarBotao() {
 function exibirSucesso() {
     errorMessage.style.display = 'none';
     successMessage.style.display = 'block';
-    
-    // Rolar até a mensagem de sucesso
     successMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // Limpar formulário após 2 segundos
     setTimeout(() => {
         form.reset();
         successMessage.style.display = 'none';
@@ -371,8 +385,6 @@ function exibirErro(mensagem) {
     successMessage.style.display = 'none';
     errorText.textContent = mensagem || 'Erro ao enviar. Tente novamente.';
     errorMessage.style.display = 'block';
-    
-    // Rolar até a mensagem de erro
     errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -454,9 +466,7 @@ form.addEventListener('submit', (event) => {
     }
 
     const dados = coletarDados();
-
     console.log('Dados a enviar:', dados);
-
     enviarDados(dados);
 });
 
@@ -476,13 +486,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function formatarTelefone(value) {
     const numeros = value.replace(/\D/g, '');
-    
+
     if (numeros.length === 11) {
         return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
     } else if (numeros.length === 10) {
         return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
     }
-    
+
     return value;
 }
 
