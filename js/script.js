@@ -2,7 +2,7 @@
    CHÁ DE PANELA - JAVASCRIPT
    ======================================== */
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjCfcpHuq1ds3Zgg3AiMsyYguUOvUvzny4MAGSK-AsKEd6DispZ2ECF-zAVvuhXcD1/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzFmcioZtuU2O5Bru87vjDZyf5pj_iZjj5JvLSYLFJHwq8PicM0FG2UnrkilZ3gvHh_/exec';
 
 const PRESENTES_FALLBACK = [
     'Jogo de Pratos',
