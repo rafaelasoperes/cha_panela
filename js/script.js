@@ -33,6 +33,12 @@ let allPresentesByCategory = {
 // agora guarda a quantidade já escolhida por nome
 let presentesEscolhidosContagem = {};
 
+const resumoModalOverlay = document.getElementById('resumoModalOverlay');
+const resumoPresentesLista = document.getElementById('resumoPresentesLista');
+const fecharResumoModalBtn = document.getElementById('fecharResumoModal');
+const resumoModalOkBtn = document.getElementById('resumoModalOk');
+const resumoModalTexto = document.getElementById('resumoModalTexto');
+
 let currentCategory = 'cozinha';
 
 const ITEMS_PER_PAGE = 12;
@@ -382,16 +388,53 @@ function habilitarBotao() {
     document.getElementById('submitSpinner').style.display = 'none';
 }
 
+function abrirResumoModal(listaPresentes) {
+    resumoPresentesLista.innerHTML = '';
+
+    const nomePessoa = nomeInput.value.trim();
+
+    resumoModalTexto.textContent = nomePessoa
+        ? `${nomePessoa}, você selecionou os seguintes presentes:`
+        : 'Você selecionou os seguintes presentes:';
+
+    listaPresentes.forEach(presente => {
+        const item = document.createElement('div');
+        item.className = 'resumo-modal-item';
+        item.textContent = presente;
+        resumoPresentesLista.appendChild(item);
+    });
+
+    resumoModalOverlay.style.display = 'flex';
+    document.body.classList.add('modal-aberto');
+}
+
+function fecharResumoModal() {
+    resumoModalOverlay.style.display = 'none';
+    document.body.classList.remove('modal-aberto');
+
+    form.reset();
+    presentesSelecionados.clear();
+    successMessage.style.display = 'none';
+}
+
+fecharResumoModalBtn.addEventListener('click', fecharResumoModal);
+resumoModalOkBtn.addEventListener('click', fecharResumoModal);
+
+resumoModalOverlay.addEventListener('click', (event) => {
+    if (event.target === resumoModalOverlay) {
+        fecharResumoModal();
+    }
+});
+
 function exibirSucesso() {
     errorMessage.style.display = 'none';
     successMessage.style.display = 'block';
-    successMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    setTimeout(() => {
-        form.reset();
-        presentesSelecionados.clear();
-        successMessage.style.display = 'none';
-    }, 3000);
+    const listaPresentes = Array.from(presentesSelecionados.values());
+
+    abrirResumoModal(listaPresentes);
+
+    successMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function exibirErro(mensagem) {
