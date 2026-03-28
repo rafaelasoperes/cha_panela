@@ -415,6 +415,8 @@ function fecharResumoModal() {
     form.reset();
     presentesSelecionados.clear();
     successMessage.style.display = 'none';
+
+    atualizarPresentesDisponiveis();
 }
 
 fecharResumoModalBtn.addEventListener('click', fecharResumoModal);
