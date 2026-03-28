@@ -15,6 +15,8 @@ const PRESENTES_FALLBACK = [
     'Utensílios de Cozinha'
 ];
 
+let presentesSelecionados = new Map();
+
 const REMOVED_GIFTS_STORAGE_KEY = 'presentesRemovidos';
 const CATEGORIES = {
     cozinha: 'Cozinha.txt',
@@ -99,9 +101,8 @@ function validarTelefone(telefone) {
 
 function validarPresentes() {
     const presentesError = document.getElementById('presentesError');
-    const presentesSelecionados = Array.from(getPresentesCheckboxes()).filter(cb => cb.checked);
 
-    if (presentesSelecionados.length === 0) {
+    if (presentesSelecionados.size === 0) {
         presentesError.textContent = 'Selecione pelo menos um presente';
         presentesError.classList.add('show');
         return false;
@@ -120,14 +121,10 @@ function validarFormulario() {
 }
 
 function coletarDados() {
-    const presentesSelecionados = Array.from(getPresentesCheckboxes())
-        .filter(cb => cb.checked)
-        .map(checkbox => checkbox.value);
-
     return {
         nome: nomeInput.value.trim(),
-        telefone: nomeInput ? telefoneInput.value.trim() : '',
-        presentes: presentesSelecionados.join('; '),
+        telefone: telefoneInput.value.trim(),
+        presentes: Array.from(presentesSelecionados.values()).join('; '),
         dataHora: new Date().toLocaleString('pt-BR')
     };
 }
@@ -198,6 +195,9 @@ function inserirOpcoesPresentes(presentes) {
         const quantidadeEscolhida = presentesEscolhidosContagem[normalizado] || 0;
         const bloqueado = renderizados[normalizado] <= quantidadeEscolhida;
 
+        const chaveSelecao = `${normalizado}||${renderizados[normalizado]}`;
+        const marcado = presentesSelecionados.has(chaveSelecao);
+
         const id = 'gift-' + normalizado.replace(/[^a-z0-9]+/g, '-') + '-' + renderizados[normalizado];
 
         const div = document.createElement('div');
@@ -211,7 +211,9 @@ function inserirOpcoesPresentes(presentes) {
                 id="${id}"
                 name="presentes"
                 value="${presente}"
+                data-chave="${chaveSelecao}"
                 ${bloqueado ? 'disabled' : ''}
+                ${marcado ? 'checked' : ''}
             >
             <label for="${id}">
                 <span class="icon">${icon}</span>
@@ -319,8 +321,18 @@ function carregarPresentes() {
 
 function atualizarListenersPresentes() {
     const checkboxes = getPresentesCheckboxes();
+
     checkboxes.forEach(cb => {
         cb.addEventListener('change', () => {
+            const chave = cb.dataset.chave;
+            const valorOriginal = cb.value;
+
+            if (cb.checked) {
+                presentesSelecionados.set(chave, valorOriginal);
+            } else {
+                presentesSelecionados.delete(chave);
+            }
+
             const presentesError = document.getElementById('presentesError');
             if (presentesError.classList.contains('show')) {
                 validarPresentes();
@@ -377,6 +389,7 @@ function exibirSucesso() {
 
     setTimeout(() => {
         form.reset();
+        presentesSelecionados.clear();
         successMessage.style.display = 'none';
     }, 3000);
 }
