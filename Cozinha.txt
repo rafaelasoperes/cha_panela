@@ -27,6 +27,7 @@ Descascador de legumes
 Escorredor de louça (INOX)
 Escorredor de macarrão (INOX)
 Escorredor de arroz (INOX)
+Escumadeira de fritura
 Espátula de bolo
 Espátula de silicone
 Espátula de silicone
@@ -40,6 +41,7 @@ Forma hamburguer
 Forma de bolo redonda
 Forma de bolo redonda com furo
 Forma de bolo quadrada
+Forma de Pizza
 Frigideira de Ovo
 Frigideira de tapioca
 Frigideira Tradicional
@@ -77,6 +79,7 @@ Pano de prato atoalhado
 Pano de prato atoalhado
 Pegador de salada
 Peneira
+Pincel de cozinha de silicone
 Pipoqueira
 Porta alho
 Porta copos
